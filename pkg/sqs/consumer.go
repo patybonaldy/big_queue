@@ -97,18 +97,18 @@ func (c *consumer) Ack(queueURL string, messages interface{}) (int64, error) {
 		return count, fmt.Errorf("invalid message")
 	}
 
-	for _, m := range m.Messages {
-		_, err := c.svc.DeleteMessage(&sqs.DeleteMessageInput{
+	for _, msg := range m.Messages {
+		/*_, err :=*/ c.svc.DeleteMessage(&sqs.DeleteMessageInput{
 			QueueUrl:      aws.String(queueURL),
-			ReceiptHandle: m.ReceiptHandle,
+			ReceiptHandle: msg.ReceiptHandle,
 		})
 		// snippet-end:[sqs.go.delete_message.call]
-		if err != nil {
+		/*if err != nil {
 			return count, err
-		}
+		}*/
 
 		count++
-		log.Printf("[WORKER][INFO][DELETE] Message ID: %s\n", *m.MessageId)
+		log.Printf("[WORKER][INFO][DELETE] Message ID: %s\n", *msg.MessageId)
 	}
 
 	return count, nil
