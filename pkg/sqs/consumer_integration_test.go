@@ -7,10 +7,11 @@ import (
 )
 
 func TestConsumer_Read(t *testing.T) {
+	quueue := "my-queue"
 	sqsConsumer, err := NewConsumer("us-east-1",
 		"223344",
 		"wJalrXUtTHISI/DYNAMODB/bPxRfiCYEXAMPLEKEY",
-		"my-queue",
+		quueue,
 		"http://localhost:9324",
 		int64(5))
 	require.NoError(t, err)
@@ -23,5 +24,7 @@ func TestConsumer_Read(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	fmt.Println(<-message)
+	msg := <-message
+	fmt.Println(msg)
+	sqsConsumer.Ack(quueue, msg)
 }

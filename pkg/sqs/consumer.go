@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/patriciabonaldy/big_queue/pkg"
+	"log"
 )
 
 type consumer struct {
@@ -87,4 +88,28 @@ func (c *consumer) getMessages(queueURL *string) (*sqs.ReceiveMessageOutput, err
 	}
 
 	return msgResult, nil
+}
+
+func (c *consumer) Ack(queueURL string, messages interface{}) (int64, error) {
+	var count int64
+	m, ok := messages.(*sqs.ReceiveMessageOutput)
+	if !ok {
+		return count, fmt.Errorf("invalid message")
+	}
+
+	for _, m := range m.Messages {
+		_, err := c.svc.DeleteMessage(&sqs.DeleteMessageInput{
+			QueueUrl:      aws.String(queueURL),
+			ReceiptHandle: m.ReceiptHandle,
+		})
+		// snippet-end:[sqs.go.delete_message.call]
+		if err != nil {
+			return count, err
+		}
+
+		count++
+		log.Printf("[WORKER][INFO][DELETE] Message ID: %s\n", *m.MessageId)
+	}
+
+	return count, nil
 }
