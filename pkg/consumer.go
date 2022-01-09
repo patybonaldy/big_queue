@@ -6,5 +6,5 @@ type Message interface{}
 type Consumer interface {
 	// Read into the stream
 	Read(message chan interface{}, chErr chan error)
-	Ack(queueURL string, messages interface{}) (int64, error)
+	Ack(messages interface{}) (int64, error)
 }

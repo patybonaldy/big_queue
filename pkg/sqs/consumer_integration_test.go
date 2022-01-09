@@ -26,5 +26,5 @@ func TestConsumer_Read(t *testing.T) {
 
 	msg := <-message
 	fmt.Println(msg)
-	sqsConsumer.Ack(quueue, msg)
+	sqsConsumer.Ack(msg)
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/patriciabonaldy/big_queue/pkg"
 	"log"
+	"strings"
 )
 
 type consumer struct {
@@ -16,7 +16,7 @@ type consumer struct {
 	svc     *sqs.SQS
 }
 
-func NewConsumer(region, key, secret, quueue, endpoint string, timeout int64) (pkg.Consumer, error) {
+func NewConsumer(region, key, secret, quueue, endpoint string, timeout int64) (*consumer, error) {
 	config := aws.NewConfig()
 	config.WithRegion(region).WithCredentials(credentials.NewStaticCredentialsFromCreds(credentials.Value{
 		AccessKeyID:     key,
@@ -90,22 +90,30 @@ func (c *consumer) getMessages(queueURL *string) (*sqs.ReceiveMessageOutput, err
 	return msgResult, nil
 }
 
-func (c *consumer) Ack(queueURL string, messages interface{}) (int64, error) {
+func (c *consumer) Ack(messages interface{}) (int64, error) {
 	var count int64
 	m, ok := messages.(*sqs.ReceiveMessageOutput)
 	if !ok {
 		return count, fmt.Errorf("invalid message")
 	}
 
+	urlResult, err := c.getQueueURL()
+	if err != nil {
+		fmt.Println("Got an error getting the queue URL:")
+		fmt.Println(err)
+		return count, err
+	}
+
+	queueURL := urlResult.QueueUrl
 	for _, msg := range m.Messages {
-		/*_, err :=*/ c.svc.DeleteMessage(&sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(queueURL),
-			ReceiptHandle: msg.ReceiptHandle,
+		msgHandler := strings.ReplaceAll(*msg.ReceiptHandle, *msg.MessageId, "")
+		_, err := c.svc.DeleteMessage(&sqs.DeleteMessageInput{
+			QueueUrl:      queueURL,
+			ReceiptHandle: &msgHandler,
 		})
-		// snippet-end:[sqs.go.delete_message.call]
-		/*if err != nil {
+		if err != nil {
 			return count, err
-		}*/
+		}
 
 		count++
 		log.Printf("[WORKER][INFO][DELETE] Message ID: %s\n", *msg.MessageId)

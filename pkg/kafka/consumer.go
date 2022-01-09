@@ -16,7 +16,7 @@ type consumer struct {
 	reader *kafka.Reader
 }
 
-func (c *consumer) Ack(queueURL string, messages interface{}) (int64, error) {
+func (c *consumer) Ack(messages interface{}) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
