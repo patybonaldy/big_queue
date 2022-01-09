@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -25,6 +26,9 @@ func TestConsumer_Read(t *testing.T) {
 	}()
 
 	msg := <-message
-	fmt.Println(msg)
-	sqsConsumer.Ack(msg)
+	msg2, _ := msg.(*sqs.ReceiveMessageOutput)
+	fmt.Println(msg2)
+	if msg2.Messages != nil {
+		sqsConsumer.Ack(msg)
+	}
 }

@@ -7,13 +7,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"log"
-	"strings"
 )
 
 type consumer struct {
+	config  *aws.Config
 	queue   string
 	timeout int64
-	svc     *sqs.SQS
 }
 
 func NewConsumer(region, key, secret, quueue, endpoint string, timeout int64) (*consumer, error) {
@@ -24,14 +23,17 @@ func NewConsumer(region, key, secret, quueue, endpoint string, timeout int64) (*
 	})).WithEndpoint(endpoint)
 	config = config.WithDisableSSL(true)
 
-	sess, err := session.NewSession(config)
+	return &consumer{config: config, queue: quueue, timeout: timeout}, nil
+}
+
+func (c *consumer) createSQSClient() (*sqs.SQS, error) {
+	sess, err := session.NewSession(c.config)
 	if err != nil {
 		return nil, err
 	}
 
 	svc := sqs.New(sess)
-
-	return &consumer{queue: quueue, timeout: timeout, svc: svc}, nil
+	return svc, nil
 }
 
 func (c *consumer) Read(message chan interface{}, chErr chan error) {
@@ -43,10 +45,7 @@ func (c *consumer) Read(message chan interface{}, chErr chan error) {
 		return
 	}
 
-	// snippet-start:[sqs.go.receive_message.url]
 	queueURL := urlResult.QueueUrl
-	// snippet-end:[sqs.go.receive_message.url]
-
 	msgResult, err := c.getMessages(queueURL)
 	if err != nil {
 		chErr <- err
@@ -58,7 +57,12 @@ func (c *consumer) Read(message chan interface{}, chErr chan error) {
 
 func (c *consumer) getQueueURL() (*sqs.GetQueueUrlOutput, error) {
 	// snippet-start:[sqs.go.receive_messages.queue_url]
-	urlResult, err := c.svc.GetQueueUrl(&sqs.GetQueueUrlInput{
+	svc, err := c.createSQSClient()
+	if err != nil {
+		return nil, err
+	}
+
+	urlResult, err := svc.GetQueueUrl(&sqs.GetQueueUrlInput{
 		QueueName: &c.queue,
 	})
 	// snippet-end:[sqs.go.receive_messages.queue_url]
@@ -70,8 +74,12 @@ func (c *consumer) getQueueURL() (*sqs.GetQueueUrlOutput, error) {
 }
 
 func (c *consumer) getMessages(queueURL *string) (*sqs.ReceiveMessageOutput, error) {
-	// snippet-start:[sqs.go.receive_messages.call]
-	msgResult, err := c.svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+	svc, err := c.createSQSClient()
+	if err != nil {
+		return nil, err
+	}
+
+	msgResult, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
 		},
@@ -97,6 +105,11 @@ func (c *consumer) Ack(messages interface{}) (int64, error) {
 		return count, fmt.Errorf("invalid message")
 	}
 
+	svc, err := c.createSQSClient()
+	if err != nil {
+		return count, err
+	}
+
 	urlResult, err := c.getQueueURL()
 	if err != nil {
 		fmt.Println("Got an error getting the queue URL:")
@@ -106,10 +119,9 @@ func (c *consumer) Ack(messages interface{}) (int64, error) {
 
 	queueURL := urlResult.QueueUrl
 	for _, msg := range m.Messages {
-		msgHandler := strings.ReplaceAll(*msg.ReceiptHandle, *msg.MessageId, "")
-		_, err := c.svc.DeleteMessage(&sqs.DeleteMessageInput{
+		_, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
 			QueueUrl:      queueURL,
-			ReceiptHandle: &msgHandler,
+			ReceiptHandle: msg.ReceiptHandle,
 		})
 		if err != nil {
 			return count, err
