@@ -2,7 +2,7 @@
 
 This is a simple big queue and implementation in kafka, rabbit and aws sqs.
 * 
-* Note: We have used package-oriented-design to create this API, you can know more about this
+* Note: We have used package-oriented-design to create this PKG, you can know more about this
   [link](https://www.ardanlabs.com/blog/2017/02/package-oriented-design.html)
 
 
